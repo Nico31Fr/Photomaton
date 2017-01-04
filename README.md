@@ -9,3 +9,4 @@ server.py            : the webserver for wifi photos acces
 
 index.py             : website photo galery with the lastest photos
 
+la tête à toto.....
