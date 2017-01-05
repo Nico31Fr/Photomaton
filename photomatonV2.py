@@ -14,7 +14,7 @@ import subprocess
 import atexit
 import threading
 #mport exifread
-from PIL import Photo
+#from PIL import photo
 from picamera import PiCamera
 from time import sleep
 
@@ -44,6 +44,7 @@ GPIO.output(POSE_LED, False)
 GPIO.output(BUTTON_LED, False)
 GPIO.output(PRINT_LED, False)
 
+nbphoto = 0
 print(" Python script stated ...")
 
 # init file path
@@ -53,7 +54,7 @@ if os.path.exists('/media/pi/F866-6C99'):
   print("found USb drive folder: "+ directory)
   if os.path.exists('/media/pi/F866-6C99/Photos'):
   	print(" Photo directory alreday exist")
-  else
+  else:
     print(" create Photos directory")
     os.mkdir('/media/pi/F866-6C99/Photos')
 
@@ -82,7 +83,9 @@ def blinkPoseLed():
 
 ################ start picture capture ######################################################################################
 def snapPhoto():
-	  nbphoto = nbphoto+1
+    global nbphoto
+    nbphoto += 1
+    localnbphoto = nbphoto 
     print("snap started")
     camera.annotate_text = " Photo dans 4 sec. "
     time.sleep(1)
@@ -92,7 +95,9 @@ def snapPhoto():
     time.sleep(1)
     camera.annotate_text = " Photo dans 1 sec. "
     time.sleep(1)
-    camera.capture('%s/Photos/image_%s.jpg' %directory %nbphoto)
+    camera.annotate_text = " Clic ! "
+    #camera.capture('%s/Photos/image_%s.jpg' %directory %localnbphoto)
+    camera.capture('/media/pi/F866-6C99/Photos/image_%s.jpg' %localnbphoto)
 
 ################ photo requested function  ##################################################################################
 def tap():
@@ -107,10 +112,10 @@ def tap():
   snap.join()
   
 # Display the new photo
-img = Image.open('image_%s.jpg' %nbphoto)
-photoOverlay = camera.add_overlay(ing.tostring(), size=img.size)
-sleep(POSTVIEW_TIME)
-camera.remove_overlay(photoOverlay)
+  #img = photo.open('image_%s.jpg' %nbphoto)
+  #photoOverlay = camera.add_overlay(ing.tostring(), size=img.size)
+  #sleep(POSTVIEW_TIME)
+  #camera.remove_overlay(photoOverlay)
 
 # reinit for the next round  
   print("ready for next round")
@@ -133,7 +138,6 @@ prevButtonState = GPIO.input(SWITCH)
 prevTime        = time.time()
 tapEnable       = False
 holdEnable      = False
-nbphoto         = 0
 
 ## wait for camera to be connected
 camera = PiCamera()
@@ -153,7 +157,7 @@ camera.annotate_text = " Pret pour la prise de vue "
 
 # effect and B&W
 #camera.image_effect='sketch'
-camera.color_effects(128,128)
+camera.color_effects = (128,128)
 
 #background
 while True:
