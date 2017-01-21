@@ -1,14 +1,11 @@
-#!/usr/bin/python3
- 
-import http.server
- 
+import SimpleHTTPServer
+import SocketServer
+
 PORT = 80
-server_address = ("photomaton", PORT)
 
-server = http.server.HTTPServer
-handler = http.server.CGIHTTPRequestHandler
-handler.cgi_directories = ["/"]
-print("Serveur actif sur le port :", PORT)
+Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 
-httpd = server(server_address, handler)
+httpd = SocketServer.TCPServer(("", PORT), Handler)
+
+print "serving at port", PORT
 httpd.serve_forever()

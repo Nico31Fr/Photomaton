@@ -3,4 +3,4 @@
 # photomaton V2 startup
 #
 
-sudo python /home/pi/photoMaton/photomatonV2.py
+sudo python photomatonV2.py

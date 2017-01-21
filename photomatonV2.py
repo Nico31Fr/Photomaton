@@ -14,7 +14,7 @@ import subprocess
 import atexit
 import threading
 #mport exifread
-#from PIL import photo
+from PIL import Image
 from picamera import PiCamera
 from time import sleep
 
@@ -25,6 +25,8 @@ RESET = 25
 PRINT_LED = 22
 POSE_LED = 17
 BUTTON_LED = 27
+FLASH_L = 12
+FLASH_R = 13
 # Long press button setup
 HOLDTIME = 5                        # Duration for button hold (shutdown)
 TAPTIME = 0.01                      # Debounce time for button taps
@@ -39,10 +41,18 @@ GPIO.setup(RESET, GPIO.IN)
 GPIO.setup(POSE_LED, GPIO.OUT)
 GPIO.setup(BUTTON_LED, GPIO.OUT)
 GPIO.setup(PRINT_LED, GPIO.OUT)
+GPIO.setup(FLASH_L, GPIO.OUT)
+GPIO.setup(FLASH_R, GPIO.OUT)
+  
 #GPIO Inits
 GPIO.output(POSE_LED, False)
 GPIO.output(BUTTON_LED, False)
 GPIO.output(PRINT_LED, False)
+F1 = GPIO.PWM(FLASH_L, 500)
+F2 = GPIO.PWM(FLASH_R, 500)
+F1.start(0)
+F2.start(0)
+
 
 nbphoto = 0
 print(" Python script stated ...")
@@ -64,7 +74,23 @@ def cleanup():
   GPIO.output(POSE_LED, False)
   GPIO.cleanup()
 
-################ blink pose led function ####################################################################################
+################ Flash swing function #######################################################################################
+
+def flashSwing():
+  F1.ChangeDutyCycle(0.1)
+  F2.ChangeDutyCycle(0.1)
+  time.sleep(1)
+  for i in range(5):
+    F1.ChangeDutyCycle(0)
+    F2.ChangeDutyCycle(0)
+    time.sleep(0.4)
+    F1.ChangeDutyCycle(0.3)
+    F2.ChangeDutyCycle(0.3)
+    time.sleep(0.4)
+  F1.ChangeDutyCycle(0)
+  F2.ChangeDutyCycle(0)  
+
+################ blink pose led function NOT USED ############################################################################
 
 def blinkPoseLed():
   GPIO.output(POSE_LED, True)
@@ -84,9 +110,10 @@ def blinkPoseLed():
 ################ start picture capture ######################################################################################
 def snapPhoto():
     global nbphoto
-    nbphoto += 1
-    localnbphoto = nbphoto 
+    nbphoto += 1 
     print("snap started")
+    camera.annotate_text = " Photo dans 5 sec. "
+    time.sleep(1)
     camera.annotate_text = " Photo dans 4 sec. "
     time.sleep(1)
     camera.annotate_text = " Photo dans 3 sec. "
@@ -96,26 +123,55 @@ def snapPhoto():
     camera.annotate_text = " Photo dans 1 sec. "
     time.sleep(1)
     camera.annotate_text = " Clic ! "
-    #camera.capture('%s/Photos/image_%s.jpg' %directory %localnbphoto)
-    camera.capture('/media/pi/F866-6C99/Photos/image_%s.jpg' %localnbphoto)
+
+    F1.ChangeDutyCycle(20)
+    F2.ChangeDutyCycle(20)
+
+    camera.capture('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
+    camera.annotate_text = ""
+
+    F1.ChangeDutyCycle(0)
+    F2.ChangeDutyCycle(0)
 
 ################ photo requested function  ##################################################################################
 def tap():
+
+  global nbphoto
   GPIO.output(BUTTON_LED, False)
 
 #start threads    
-  blink = threading.Thread(target=blinkPoseLed)
+  #blink = threading.Thread(target=blinkPoseLed)
   snap = threading.Thread(target=snapPhoto)
-  blink.start()
+  fSwing = threading.Thread(target=flashSwing)
+  #blink.start()
   snap.start()
-  blink.join()
+  fSwing.start()
+  #blink.join()
   snap.join()
+  fSwing.join()
   
 # Display the new photo
-  #img = photo.open('image_%s.jpg' %nbphoto)
-  #photoOverlay = camera.add_overlay(ing.tostring(), size=img.size)
-  #sleep(POSTVIEW_TIME)
-  #camera.remove_overlay(photoOverlay)
+  img = Image.open('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
+  # Create an image padded to the required size with
+  # mode 'RGB'
+  pad = Image.new('RGB', (
+    ((img.size[0] + 31) // 32) * 32,
+    ((img.size[1] + 15) // 16) * 16,
+    ))
+  # Paste the original image into the padded one
+  pad.paste(img, (0, 0))
+  # Add the overlay with the padded image as the source,
+  # but the original image's dimensions
+  photoOverlay = camera.add_overlay(pad.tostring(), size=img.size)
+  # By default, the overlay is in layer 0, beneath the
+  # preview (which defaults to layer 2). Here we make
+  # the new overlay semi-transparent, then move it above
+  # the preview
+  photoOverlay.alpha = 255
+  photoOverlay.layer = 3
+
+  sleep(POSTVIEW_TIME)
+  camera.remove_overlay(photoOverlay)
 
 # reinit for the next round  
   print("ready for next round")
@@ -123,13 +179,14 @@ def tap():
   GPIO.output(PRINT_LED, False)
   GPIO.output(BUTTON_LED, True)
 
-# shutdown detected function
+####################### shutdown detected function ##########################################################################
 def hold():
   print("long pressed button! Shutting down system")
-  camera.annotate_text = "Shutting down system"
+  camera.annotate_text = "Extinction ... Bye"
   sleep(7)
   camera.stop_preview()
-  subprocess.call("sudo shutdown -hP now", shell=True)
+  #subprocess.call("sudo shutdown -hP now", shell=True)
+  sys.exit()
 
 ################################ MAIN #######################################################################################
 
@@ -157,7 +214,7 @@ camera.annotate_text = " Pret pour la prise de vue "
 
 # effect and B&W
 #camera.image_effect='sketch'
-camera.color_effects = (128,128)
+#camera.color_effects = (128,128)
 
 #background
 while True:
