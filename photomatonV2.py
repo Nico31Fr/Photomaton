@@ -33,6 +33,10 @@ TAPTIME = 0.01                      # Debounce time for button taps
 CAM_ANGLE = 0                       # camera angle in degre
 TEXT_SIZE = 100                     # on screen text size
 POSTVIEW_TIME = 4                   # time to display the new picture
+SHUTTER_SPEED = 0                   # temps d'expo (0 = AUTO)
+FLASH_POWER   = 50                  # puissance du Flash de 0% a 100%
+AWB_VALUE = 'fluorescent'                 # mode de la balance des blancs automatique
+EXPOSURE_MODE = 'antishake'         # type d'exposition
 
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
@@ -48,15 +52,16 @@ GPIO.setup(FLASH_R, GPIO.OUT)
 GPIO.output(POSE_LED, False)
 GPIO.output(BUTTON_LED, False)
 GPIO.output(PRINT_LED, False)
-F1 = GPIO.PWM(FLASH_L, 500)
-F2 = GPIO.PWM(FLASH_R, 500)
+F1 = GPIO.PWM(FLASH_L, 200)
+F2 = GPIO.PWM(FLASH_R, 200)
 F1.start(0)
 F2.start(0)
 
 
 nbphoto = 0
-print(" Python script stated ...")
 
+print(" Python script stated ...")
+sleep(1)
 # init file path
 directory = '/home/pi/photobooth_images'
 if os.path.exists('/media/pi/F866-6C99'):
@@ -65,9 +70,12 @@ if os.path.exists('/media/pi/F866-6C99'):
   if os.path.exists('/media/pi/F866-6C99/Photos'):
   	print(" Photo directory alreday exist")
   else:
-    print(" create Photos directory")
-    os.mkdir('/media/pi/F866-6C99/Photos')
-
+    #print(" create Photos directory")
+    print(" photo directory not found")
+    #os.mkdir('/media/pi/F866-6C99/Photos')
+    sleep(3)
+    sys.exit()
+    
 @atexit.register
 def cleanup():
   GPIO.output(BUTTON_LED, False)
@@ -81,10 +89,10 @@ def flashSwing():
   F2.ChangeDutyCycle(0.1)
   time.sleep(1)
   for i in range(5):
-    F1.ChangeDutyCycle(0)
+    F1.ChangeDutyCycle(0.3)
     F2.ChangeDutyCycle(0)
     time.sleep(0.4)
-    F1.ChangeDutyCycle(0.3)
+    F1.ChangeDutyCycle(0)
     F2.ChangeDutyCycle(0.3)
     time.sleep(0.4)
   F1.ChangeDutyCycle(0)
@@ -124,8 +132,8 @@ def snapPhoto():
     time.sleep(1)
     camera.annotate_text = " Clic ! "
 
-    F1.ChangeDutyCycle(20)
-    F2.ChangeDutyCycle(20)
+    F1.ChangeDutyCycle(FLASH_POWER)
+    F2.ChangeDutyCycle(FLASH_POWER)
 
     camera.capture('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
     camera.annotate_text = ""
@@ -183,7 +191,7 @@ def tap():
 def hold():
   print("long pressed button! Shutting down system")
   camera.annotate_text = "Extinction ... Bye"
-  sleep(7)
+  sleep(5)
   camera.stop_preview()
   #subprocess.call("sudo shutdown -hP now", shell=True)
   sys.exit()
@@ -200,11 +208,15 @@ holdEnable      = False
 camera = PiCamera()
 camera.rotation = CAM_ANGLE
 camera.annotate_text_size = TEXT_SIZE
-  
+camera.shutter_speed  = SHUTTER_SPEED
+camera.awb_mode = AWB_VALUE
+camera.exposure_mode = EXPOSURE_MODE
 ## Camera is now connected
 print("camera is now connected ...")
 
 GPIO.output(BUTTON_LED, True)
+
+sleep(4)
 
 #start on screen preview
 print("Start preview...")
@@ -214,7 +226,7 @@ camera.annotate_text = " Pret pour la prise de vue "
 
 # effect and B&W
 #camera.image_effect='sketch'
-#camera.color_effects = (128,128)
+camera.color_effects = (128,128)
 
 #background
 while True:
