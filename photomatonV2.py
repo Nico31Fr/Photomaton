@@ -35,7 +35,7 @@ TEXT_SIZE = 100                     # on screen text size
 POSTVIEW_TIME = 4                   # time to display the new picture
 SHUTTER_SPEED = 0                   # temps d'expo (0 = AUTO)
 FLASH_POWER   = 50                  # puissance du Flash de 0% a 100%
-AWB_VALUE = 'fluorescent'                 # mode de la balance des blancs automatique
+AWB_VALUE = 'fluorescent'           # mode de la balance des blancs automatique
 EXPOSURE_MODE = 'antishake'         # type d'exposition
 
 # GPIO setup
@@ -60,23 +60,31 @@ F2.start(0)
 
 nbphoto = 0
 
-print(" Python script stated ...")
+print("> Python script stated ...")
 sleep(1)
 # init file path
 directory = '/home/pi/photobooth_images'
-if os.path.exists('/media/pi/F866-6C99'):
-  directory = '/media/pi/F866-6C99'
-  print("found USb drive folder: "+ directory)
-  if os.path.exists('/media/pi/F866-6C99/Photos'):
-  	print(" Photo directory alreday exist")
+if os.path.exists('/media/pi/photoMaton'):
+  directory = '/media/pi/photoMaton'
+  print("> found USb drive folder: "+ directory)
+  if os.path.exists('/media/pi/photoMaton/Photos'):
+  	print("> USB drive initialisation OK")
+
   else:
     #print(" create Photos directory")
-    print(" photo directory not found")
-    #os.mkdir('/media/pi/F866-6C99/Photos')
+    print("photo directory not found !")
+    #os.mkdir('/media/pi/photoMaton/Photos')
     sleep(3)
     sys.exit()
-    
+
+# find existing pictures
+while os.path.isfile('%s/Photos/image_%s.jpg' %(directory,nbphoto+1)):
+    nbphoto += 1
+print('> %s pictures alredy in directory' %(nbphoto))
+
 @atexit.register
+
+
 def cleanup():
   GPIO.output(BUTTON_LED, False)
   GPIO.output(POSE_LED, False)
@@ -193,7 +201,7 @@ def hold():
   camera.annotate_text = "Extinction ... Bye"
   sleep(5)
   camera.stop_preview()
-  #subprocess.call("sudo shutdown -hP now", shell=True)
+  subprocess.call("sudo shutdown -hP now", shell=True)
   sys.exit()
 
 ################################ MAIN #######################################################################################
@@ -212,21 +220,21 @@ camera.shutter_speed  = SHUTTER_SPEED
 camera.awb_mode = AWB_VALUE
 camera.exposure_mode = EXPOSURE_MODE
 ## Camera is now connected
-print("camera is now connected ...")
+print("> camera is now connected ...")
 
 GPIO.output(BUTTON_LED, True)
 
 sleep(4)
 
 #start on screen preview
-print("Start preview...")
+print("> Start preview...")
 camera.exif_tags['EXIF.UserComment'] = b'Photomaton V2 par Nicolas Cot'
 camera.start_preview()
 camera.annotate_text = " Pret pour la prise de vue "
 
 # effect and B&W
 #camera.image_effect='sketch'
-camera.color_effects = (128,128)
+#camera.color_effects = (128,128)
 
 #background
 while True:
