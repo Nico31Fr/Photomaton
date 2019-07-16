@@ -1,6 +1,10 @@
-# Photomaton V2
-source code for photomaton V2
+# Photomaton by Nicolas Cot
 
-photomatonV2_startup : Batch file for startup the photobooth
+FILES
+photomaton_startup : Batch file for startup the photobooth
+photomaton.py      : main manager of the photobooth
 
-photomatonV2.py      : main manager of the photobooth
+HISTORY
+16/07/2019 | V2.1  | Add USB detection - Thanks to Alain Gauche ;-)
+04/01/2017 | V2.0  | initial release on Raspi
+      2013 | V1.0  | Fist photomaton based on Arduino - totaly destroyed !
