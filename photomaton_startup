@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# photomaton V2 startup
+#
+
+cd /home/pi/Photomaton
+python photomaton.py
