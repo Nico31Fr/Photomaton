@@ -1,8 +1,11 @@
 # Photomaton by Nicolas Cot
 
 FILES
+
 photomaton_startup : Batch file for startup the photobooth
+
 photomaton.py      : main manager of the photobooth
+
 
 HISTORY
 16/07/2019 | V2.1  | Add USB detection - Thanks to Alain Gauche ;-)
