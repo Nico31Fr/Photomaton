@@ -3,5 +3,5 @@
 # photomaton V2 startup
 #
 
-cd /home/pi/photoMaton/PhotomatonV2
+cd /home/pi/PhotomatonV2
 python photomatonV2.py

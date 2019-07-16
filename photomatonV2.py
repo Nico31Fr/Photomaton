@@ -16,6 +16,7 @@ import threading
 #mport exifread
 from PIL import Image
 from picamera import PiCamera
+from picamera import Color #for set background
 from time import sleep
 
 #Configurations defines
@@ -30,13 +31,29 @@ FLASH_R = 13
 # Long press button setup
 HOLDTIME = 5                        # Duration for button hold (shutdown)
 TAPTIME = 0.01                      # Debounce time for button taps
-CAM_ANGLE = 0                       # camera angle in degre
+CAM_ANGLE = 0                    # camera angle in degre
 TEXT_SIZE = 100                     # on screen text size
 POSTVIEW_TIME = 4                   # time to display the new picture
 SHUTTER_SPEED = 0                   # temps d'expo (0 = AUTO)
-FLASH_POWER   = 50                  # puissance du Flash de 0% a 100%
+FLASH_POWER   = 70                  # puissance du Flash de 0% a 100%
 AWB_VALUE = 'fluorescent'           # mode de la balance des blancs automatique
 EXPOSURE_MODE = 'antishake'         # type d'exposition
+
+TEXTE_PAR_DEFAULT = " Appuyer sur le bouton "
+
+# Resolutions are (Width,Height)
+RESOLUTION_5MP      = (2592,1944)
+#RESOLUTION_5MP     = (2560,1920)
+RESOLUTION_4MP     = (2592,1520)
+RESOLUTION_3MP     = (2048,1536)
+RESOLUTION_1080PHD = (1920,1080)   # 16:9
+RESOLUTION_2MP     = (1600,1200)
+RESOLUTION_1_3MP   = (1280,1024)
+RESOLUTION_960PHD  = (1280,960)
+RESOLUTION_XGA     = (1024,768)
+RESOLUTION_SVGA    = (800,600)
+RESOLUTION_VGA     = (640,480)
+RESOLUTION_CGA = (320,200)
 
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
@@ -64,10 +81,10 @@ print("> Python script stated ...")
 sleep(1)
 # init file path
 directory = '/home/pi/photobooth_images'
-if os.path.exists('/media/pi/photoMaton'):
-  directory = '/media/pi/photoMaton'
+if os.path.exists('/media/pi/PHOTOMATON'):
+  directory = '/media/pi/PHOTOMATON'
   print("> found USb drive folder: "+ directory)
-  if os.path.exists('/media/pi/photoMaton/Photos'):
+  if os.path.exists('/media/pi/PHOTOMATON/Photos'):
   	print("> USB drive initialisation OK")
 
   else:
@@ -142,9 +159,10 @@ def snapPhoto():
 
     F1.ChangeDutyCycle(FLASH_POWER)
     F2.ChangeDutyCycle(FLASH_POWER)
-
-    camera.capture('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
     camera.annotate_text = ""
+    camera.hflip = False
+    camera.capture('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
+    camera.hflip = True    
 
     F1.ChangeDutyCycle(0)
     F2.ChangeDutyCycle(0)
@@ -191,7 +209,7 @@ def tap():
 
 # reinit for the next round  
   print("ready for next round")
-  camera.annotate_text = " Pret pour la prise de vue "
+  camera.annotate_text = TEXTE_PAR_DEFAULT
   GPIO.output(PRINT_LED, False)
   GPIO.output(BUTTON_LED, True)
 
@@ -216,9 +234,11 @@ holdEnable      = False
 camera = PiCamera()
 camera.rotation = CAM_ANGLE
 camera.annotate_text_size = TEXT_SIZE
+camera.annotate_background = Color('black')
 camera.shutter_speed  = SHUTTER_SPEED
 camera.awb_mode = AWB_VALUE
 camera.exposure_mode = EXPOSURE_MODE
+camera.resolution = RESOLUTION_4MP
 ## Camera is now connected
 print("> camera is now connected ...")
 
@@ -229,8 +249,10 @@ sleep(4)
 #start on screen preview
 print("> Start preview...")
 camera.exif_tags['EXIF.UserComment'] = b'Photomaton V2 par Nicolas Cot'
+camera.start_preview(resolution=(1280,800))
 camera.start_preview()
-camera.annotate_text = " Pret pour la prise de vue "
+camera.annotate_text = TEXTE_PAR_DEFAULT
+camera.hflip = True
 
 # effect and B&W
 #camera.image_effect='sketch'
