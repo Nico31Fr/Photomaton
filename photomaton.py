@@ -211,7 +211,7 @@ def tap():
   pad.paste(img, (0, 0))
   # Add the overlay with the padded image as the source,
   # but the original image's dimensions
-  photoOverlay = camera.add_overlay(pad.tostring(), size=img.size)
+  photoOverlay = camera.add_overlay(pad.tobytes(), size=img.size)
   # By default, the overlay is in layer 0, beneath the
   # preview (which defaults to layer 2). Here we make
   # the new overlay semi-transparent, then move it above
@@ -300,17 +300,17 @@ while True:
         sleep(2)
         nbphoto = count_photos(directory)
         camera.annotate_text = " %s Photos detectees ! " % nbphoto
-	sleep(2)
-	camera.annotate_text = TEXTE_PAR_DEFAULT
-	GPIO.output(BUTTON_LED, True) #On peut rallumer le bouton
+      sleep(2)
+      camera.annotate_text = TEXTE_PAR_DEFAULT
+      GPIO.output(BUTTON_LED, True) #On peut rallumer le bouton
     else: #Si ce n'etait pas en erreur
       directory = detect_USB()
       if directory == PI_DIR_ERROR: # on regarde que la cle n'est pas ete enlevee.
         GPIO.output(BUTTON_LED, False) #On etteint le bouton
-	camera.annotate_text = " Cle USB retiree ! "
+        camera.annotate_text = " Cle USB retiree ! "
         sleep(2)
-	camera.annotate_text = " Pas de cle USB detectee "
-    prevUsbTime = t
+        camera.annotate_text = " Pas de cle USB detectee "
+        prevUsbTime = t
   if directory != PI_DIR_ERROR:
   # Has button state changed
     if buttonState != prevButtonState:
@@ -326,13 +326,13 @@ while True:
       elif (t - prevTime) >= TAPTIME: # Not HOLDTIME.  TAPTIME elapsed?
         # Yes.  Debounced press or release...
        if buttonState == False:      # Button released?
-          if tapEnable == True:       # Ignore if prior hold()
-            tap()                     # Tap triggered (button released)
-            tapEnable  = False        # Disable tap and hold
-            holdEnable = False
-        else:                         # Button pressed
-          tapEnable  = True           # Enable tap and hold actions
-          holdEnable = True
+         if tapEnable == True:       # Ignore if prior hold()
+           tap()                     # Tap triggered (button released)
+           tapEnable  = False        # Disable tap and hold
+           holdEnable = False
+       else:                         # Button pressed
+         tapEnable  = True           # Enable tap and hold actions
+         holdEnable = True
   else: #Attente detection cle
     camera.annotate_text = " Pas de cle USB detectee "
-	
+
