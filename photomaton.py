@@ -1,7 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+# coding: utf-8
 ##
 ## PhotoMaton by Nicolas Cot
 ##
+## 31/07/2022 | V2.2  | Add send photo to FTP
 ## 16/07/2019 | V2.1  | Add USB detection - Thanks to Alain Gauche ;-)
 ## 04/01/2017 | V2.0  | initial release
 ##
@@ -21,14 +23,16 @@ from PIL import Image
 from picamera import PiCamera
 from picamera import Color #for set background
 from time import sleep
+from ftplib import FTP, all_errors
 
 #Configurations defines
 # IO Pin define
+FTP_OPTION = True
 SWITCH = 23
 RESET = 25
 PRINT_LED = 22
-POSE_LED = 17
-BUTTON_LED = 27
+POSE_LED = 27
+BUTTON_LED = 17
 FLASH_L = 12
 FLASH_R = 13
 # Long press button setup
@@ -36,17 +40,31 @@ HOLDTIME = 5                        # Duration for button hold (shutdown)
 TAPTIME = 0.01                      # Debounce time for button taps
 # USB_storage parameters
 USBCHECKTIME = 1                    # Periodic USB check
-DEFAULT_PI_PHOTO_DIR = '/media/USB_DISK' #'/home/pi/photobooth_images/Photos' #Default directory if no USB key is detected. Just to not break the program
 PI_DIR_ERROR = 'ERROR'
 #Camera parameters
 CAM_ANGLE = 0                       # camera angle in degre
 POSTVIEW_TIME = 4                   # time to display the new picture
 SHUTTER_SPEED = 0                   # temps d'expo (0 = AUTO)
-FLASH_POWER   = 70                  # puissance du Flash de 0% a 100%
+FLASH_POWER   = 50                  # puissance du Flash de 0% a 100%
 AWB_VALUE = 'fluorescent'           # mode de la balance des blancs automatique
-EXPOSURE_MODE = 'antishake'         # type d'exposition
+#EXPOSURE_MODE = 'antishake'         # type d'exposition
+EXPOSURE_MODE = 'auto'         # type d'exposition
+#    'off'
+#    'auto'
+#    'night'
+#    'nightpreview'
+#    'backlight'
+#    'spotlight'
+#    'sports'
+#    'snow'
+#    'beach'
+#    'verylong'
+#    'fixedfps'
+#    'antishake'
+#    'fireworks'
+
 # Affichage configs
-TEXT_SIZE = 100                     # on screen text size
+TEXT_SIZE = 90                     # on screen text size
 TEXTE_PAR_DEFAULT = " Appuyer sur le bouton "
 
 # Resolutions are (Width,Height)
@@ -77,9 +95,9 @@ def detect_USB():
 def count_photos(path):
     NbPhotos = 0
     # find existing pictures
-    while os.path.isfile('%s/image_%s.jpg' %(directory,NbPhotos+1)):
+    while os.path.isfile(directory + '/image_' + str(NbPhotos+1).zfill(3) + '.jpg'):
         NbPhotos += 1
-    #print('> %s pictures already in directory' %(NbPhotos))
+    print('> %s pictures already in directory' %(NbPhotos))
     return NbPhotos
 
 # GPIO setup
@@ -96,8 +114,8 @@ GPIO.setup(FLASH_R, GPIO.OUT)
 GPIO.output(POSE_LED, False)
 GPIO.output(BUTTON_LED, False)
 GPIO.output(PRINT_LED, False)
-F1 = GPIO.PWM(FLASH_L, 200)
-F2 = GPIO.PWM(FLASH_R, 200)
+F1 = GPIO.PWM(FLASH_L, 100)
+F2 = GPIO.PWM(FLASH_R, 100)
 F1.start(0)
 F2.start(0)
 
@@ -134,32 +152,16 @@ def flashSwing():
     F1.ChangeDutyCycle(0)
     F2.ChangeDutyCycle(0.3)
     time.sleep(0.4)
-  F1.ChangeDutyCycle(0)
-  F2.ChangeDutyCycle(0)  
+  F1.ChangeDutyCycle(1)
+  F2.ChangeDutyCycle(1)  
 
-################ blink pose led function NOT USED ############################################################################
-
-def blinkPoseLed():
-  GPIO.output(POSE_LED, True)
-  time.sleep(1.5)
-  for i in range(5):
-    GPIO.output(POSE_LED, False)
-    time.sleep(0.4)
-    GPIO.output(POSE_LED, True)
-    time.sleep(0.4)
-  for i in range(5):
-    GPIO.output(POSE_LED, False)
-    time.sleep(0.1)
-    GPIO.output(POSE_LED, True)
-    time.sleep(0.1)
-  GPIO.output(POSE_LED, False)
 
 ################ start picture capture ######################################################################################
 def snapPhoto():
 
     global nbphoto
     nbphoto += 1 
-    print("snap started")
+    print("photo %s started" %nbphoto)
     camera.annotate_text = " Photo %s dans 5 sec. " %nbphoto
     time.sleep(1)
     camera.annotate_text = " Photo dans 4 sec. "
@@ -176,11 +178,24 @@ def snapPhoto():
     F2.ChangeDutyCycle(FLASH_POWER)
     camera.annotate_text = ""
     camera.hflip = False
-    camera.capture('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
+    camera.capture(directory + '/image_' + str(nbphoto).zfill(3) + '.jpg')
     camera.hflip = True    
 
     F1.ChangeDutyCycle(0)
     F2.ChangeDutyCycle(0)
+
+    # Send photo by FTP
+    if FTP_OPTION is True:
+        try:
+            ftp = FTP('192.168.0.1', 'photomatonftp', 'photomatonftp', timeout=10)
+            ftp.cwd('/volume')
+            fichier = open(directory + '/image_' + str(nbphoto).zfill(3) + '.jpg', 'rb')
+            ftp.storbinary("STOR " + "image_" + str(nbphoto).zfill(3) + ".jpg", fichier)
+            print("send image_" + str(nbphoto).zfill(3) + ".jpg OK")
+            fichier.close()
+            ftp.quit()
+        except all_errors as e:
+            print("FTP server connection error [%s] _ continue without FTP transfert" % e)
 
 ################ photo requested function  ##################################################################################
 def tap():
@@ -189,18 +204,15 @@ def tap():
   GPIO.output(BUTTON_LED, False)
 
 #start threads    
-  #blink = threading.Thread(target=blinkPoseLed)
   snap = threading.Thread(target=snapPhoto)
   fSwing = threading.Thread(target=flashSwing)
-  #blink.start()
   snap.start()
   fSwing.start()
-  #blink.join()
   snap.join()
   fSwing.join()
   
 # Display the new photo
-  img = Image.open('%s/Photos/image_%s.jpg' %(directory, nbphoto) )
+  img = Image.open(directory + '/image_' + str(nbphoto).zfill(3) + '.jpg')
   # Create an image padded to the required size with
   # mode 'RGB'
   pad = Image.new('RGB', (
@@ -211,7 +223,7 @@ def tap():
   pad.paste(img, (0, 0))
   # Add the overlay with the padded image as the source,
   # but the original image's dimensions
-  photoOverlay = camera.add_overlay(pad.tostring(), size=img.size)
+  photoOverlay = camera.add_overlay(pad.tobytes(), size=img.size)
   # By default, the overlay is in layer 0, beneath the
   # preview (which defaults to layer 2). Here we make
   # the new overlay semi-transparent, then move it above
@@ -240,7 +252,7 @@ def hold():
     camera.stop_preview()
     subprocess.call("sudo shutdown -hP now", shell=True)
   else:                      # Sinon, on redonne la main a l'utilisateur...
-    camera.annotate_text = "Developper mode activated"
+    camera.annotate_text = "Developper mode"
     sleep(5)
     camera.stop_preview()
   sys.exit()
@@ -281,10 +293,6 @@ if directory != PI_DIR_ERROR:
 else:
   camera.annotate_text = " Pas de cle USB detectee "
 
-# effect and B&W
-#camera.image_effect='sketch'
-#camera.color_effects = (128,128)
-
 #background
 while True:
 
@@ -300,17 +308,17 @@ while True:
         sleep(2)
         nbphoto = count_photos(directory)
         camera.annotate_text = " %s Photos detectees ! " % nbphoto
-	sleep(2)
-	camera.annotate_text = TEXTE_PAR_DEFAULT
-	GPIO.output(BUTTON_LED, True) #On peut rallumer le bouton
+      sleep(2)
+      camera.annotate_text = TEXTE_PAR_DEFAULT
+      GPIO.output(BUTTON_LED, True) #On peut rallumer le bouton
     else: #Si ce n'etait pas en erreur
       directory = detect_USB()
       if directory == PI_DIR_ERROR: # on regarde que la cle n'est pas ete enlevee.
         GPIO.output(BUTTON_LED, False) #On etteint le bouton
-	camera.annotate_text = " Cle USB retiree ! "
+        camera.annotate_text = " Cle USB retiree ! "
         sleep(2)
-	camera.annotate_text = " Pas de cle USB detectee "
-    prevUsbTime = t
+        camera.annotate_text = " Pas de cle USB detectee "
+        prevUsbTime = t
   if directory != PI_DIR_ERROR:
   # Has button state changed
     if buttonState != prevButtonState:
@@ -326,13 +334,13 @@ while True:
       elif (t - prevTime) >= TAPTIME: # Not HOLDTIME.  TAPTIME elapsed?
         # Yes.  Debounced press or release...
        if buttonState == False:      # Button released?
-          if tapEnable == True:       # Ignore if prior hold()
-            tap()                     # Tap triggered (button released)
-            tapEnable  = False        # Disable tap and hold
-            holdEnable = False
-        else:                         # Button pressed
-          tapEnable  = True           # Enable tap and hold actions
-          holdEnable = True
+         if tapEnable == True:       # Ignore if prior hold()
+           tap()                     # Tap triggered (button released)
+           tapEnable  = False        # Disable tap and hold
+           holdEnable = False
+       else:                         # Button pressed
+         tapEnable  = True           # Enable tap and hold actions
+         holdEnable = True
   else: #Attente detection cle
     camera.annotate_text = " Pas de cle USB detectee "
-	
+

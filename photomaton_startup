@@ -4,4 +4,4 @@
 #
 
 cd /home/pi/Photomaton
-python photomaton.py
+python3 photomaton.py
