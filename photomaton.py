@@ -231,7 +231,11 @@ def tap():
   photoOverlay.alpha = 255
   photoOverlay.layer = 3
 
+  camera.stop_preview()
+#  camera.annotate_text = " Pas de cle USB detectee "
+
   sleep(POSTVIEW_TIME)
+  camera.start_preview()
   camera.remove_overlay(photoOverlay)
 
 # reinit for the next round  
@@ -275,6 +279,24 @@ camera.shutter_speed  = SHUTTER_SPEED
 camera.awb_mode = AWB_VALUE
 camera.exposure_mode = EXPOSURE_MODE
 camera.resolution = RESOLUTION_4MP
+
+# Add Black background
+img = Image.open('fontnoir.png')
+# Create an image padded to the required size with
+# mode 'RGB'
+pad = Image.new('RGB', RESOLUTION_ECRAN)
+# Paste the original image into the padded one
+#pad.paste(img, (0, 0))
+# Add the overlay with the padded image as the source,
+# but the original image's dimensions
+photoOverlay = camera.add_overlay(pad.tobytes(), size=RESOLUTION_ECRAN)
+# By default, the overlay is in layer 0, beneath the
+# preview (which defaults to layer 2). Here we make
+# the new overlay semi-transparent, then move it above
+# the preview
+photoOverlay.alpha = 255
+photoOverlay.layer = 0
+
 ## Camera is now connected
 print("> camera is now connected ...")
 
